@@ -19,9 +19,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 
 import pandas as pd
-
-from BPTK_Py import Model
-import BPTK_Py
+import numpy as np
 
 
 # ------------------------------------------------------
@@ -61,80 +59,68 @@ class ScenarioParams:
 
 
 # ------------------------------------------------------
-# BPTK-Py Model definieren
+# Direkte Systemdynamik-Simulation (ohne BPTK-Py)
 # ------------------------------------------------------
 
 
-def create_bee_model(years: int) -> Model:
-    """Erzeugt das Bienen-Systemdynamikmodell als BPTK-Py Model.
-
-    Das Modell läuft von START_YEAR bis START_YEAR + years mit Zeitschritt 1 Jahr.
+def simulate_scenario(years: int, params: ScenarioParams) -> pd.DataFrame:
+    """Simuliert ein einzelnes Szenario über die angegebene Anzahl Jahre.
+    
+    Args:
+        years: Anzahl der zu simulierenden Jahre
+        params: Szenario-Parameter (Umweltstress, Management, Klima)
+    
+    Returns:
+        DataFrame mit Zeitreihe (Index: Jahr, Spalten: bee_colonies, honey_yield_per_colony, etc.)
     """
-
-    stoptime = float(START_YEAR + years)
-
-    model = Model(starttime=float(START_YEAR), stoptime=stoptime, dt=1.0, name="BeeSystem")
-
-    # Stocks
-    bee_colonies = model.stock("bee_colonies")
-    bee_colonies.initial_value = DEFAULT_INITIAL_COLONIES
-
-    # Flows
-    colony_growth = model.flow("colony_growth")
-    colony_losses = model.flow("colony_losses")
-
-    # Converter / Konstanten für Levers
-    environment_stress = model.constant("environment_stress")
-    disease_management = model.constant("disease_management")
-    climate_factor = model.constant("climate_factor")
-
-    # Effektive Raten (Converter)
-    effective_growth_rate = model.converter("effective_growth_rate")
-    effective_loss_rate = model.converter("effective_loss_rate")
-
-    # Honig & volkswirtschaftlicher Nutzen (Converter)
-    honey_yield_per_colony = model.converter("honey_yield_per_colony")
-    honey_production_tons = model.converter("honey_production_tons")
-    economic_value_chf = model.converter("economic_value_chf")
-
-    # Gleichungen
-    environment_stress.equation = 0.3
-    disease_management.equation = 0.7
-    climate_factor.equation = 0.6
-
-    effective_growth_rate.equation = (
-        BASE_GROWTH_RATE
-        * (1.0 + 0.5 * (1.0 - environment_stress) + 0.5 * disease_management)
-    )
-
-    effective_loss_rate.equation = (
-        BASE_LOSS_RATE
-        * (1.0 + environment_stress + 0.5 * (1.0 - disease_management))
-    )
-
-    colony_growth.equation = bee_colonies * effective_growth_rate
-    colony_losses.equation = bee_colonies * effective_loss_rate
-
-    # Stock-Gleichung: next bee_colonies = bee_colonies + (growth - losses)
-    bee_colonies.equation = colony_growth - colony_losses
-
-    # Honigertrag pro Volk (kg/Jahr) mit Klima & Umweltstress
-    honey_yield_per_colony.equation = (
-        (HONEY_MIN + climate_factor * (HONEY_MAX - HONEY_MIN))
-        * (1.0 - 0.5 * environment_stress)
-    )
-
-    # Gesamte Honigproduktion (t/Jahr)
-    honey_production_tons.equation = bee_colonies * honey_yield_per_colony / 1000.0
-
-    # Volkswirtschaftlicher Nutzen (CHF/Jahr)
-    economic_value_chf.equation = bee_colonies * VALUE_PER_COLONY
-
-    return model
+    # Initialize
+    bee_colonies = [float(DEFAULT_INITIAL_COLONIES)]
+    time_steps = list(range(START_YEAR, START_YEAR + years + 1))
+    
+    # Calculate for each year
+    for _ in range(years):
+        current_colonies = bee_colonies[-1]
+        
+        # Calculate effective rates based on scenario parameters
+        effective_growth = BASE_GROWTH_RATE * (
+            1.0 + 0.5 * (1.0 - params.environment_stress) + 0.5 * params.disease_management
+        )
+        effective_loss = BASE_LOSS_RATE * (
+            1.0 + params.environment_stress + 0.5 * (1.0 - params.disease_management)
+        )
+        
+        # Calculate flows
+        growth = current_colonies * effective_growth
+        losses = current_colonies * effective_loss
+        
+        # Update stock
+        new_colonies = current_colonies + growth - losses
+        bee_colonies.append(new_colonies)
+    
+    # Build result dataframe
+    results = []
+    for i, t in enumerate(time_steps):
+        colonies = bee_colonies[i]
+        
+        # Honey yield per colony (kg/year) based on climate and stress
+        honey_yield = (
+            (HONEY_MIN + params.climate_factor * (HONEY_MAX - HONEY_MIN))
+            * (1.0 - 0.5 * params.environment_stress)
+        )
+        
+        results.append({
+            't': t,
+            'bee_colonies': colonies,
+            'honey_yield_per_colony': honey_yield,
+            'honey_production_tons': colonies * honey_yield / 1000.0,
+            'economic_value_chf': colonies * VALUE_PER_COLONY,
+        })
+    
+    return pd.DataFrame(results).set_index('t')
 
 
 # ------------------------------------------------------
-# Szenario-Setup und Lauf mit BPTK-Py
+# Szenario-Vergleich und Verlustberechnung
 # ------------------------------------------------------
 
 
@@ -150,72 +136,10 @@ def run_bee_scenarios(
         df_scenario: Zeitreihe Szenario
         df_loss:     Einbussen (Honig + CHF) vs. Baseline
     """
-
-    model = create_bee_model(years)
-
-    # BPTK-Session und Modell registrieren
-    bptk = BPTK_Py.bptk()
-    bptk.register_model(model)
-
-    # Szenario-Manager definieren
-    scenario_manager = {
-        "smBees": {
-            "model": model,
-            "base_constants": {
-                "bee_colonies": float(DEFAULT_INITIAL_COLONIES),
-                **baseline_params.as_constants(),
-            },
-        }
-    }
-
-    bptk.register_scenario_manager(scenario_manager)
-
-    # Zwei Szenarien: Baseline (keine Änderungen) und Szenario (angepasste Levers)
-    bptk.register_scenarios(
-        scenarios={
-            "baseline": {
-                "constants": {},
-            },
-            "scenario": {
-                "constants": scenario_params.as_constants(),
-            },
-        },
-        scenario_manager="smBees",
-    )
-
-    # Simulation ausführen, Ergebnisse als DataFrame holen
-    df_all: pd.DataFrame = bptk.plot_scenarios(
-        scenarios=["baseline", "scenario"],
-        scenario_managers="smBees",
-        equations=[
-            "bee_colonies",
-            "honey_production_tons",
-            "economic_value_chf",
-        ],
-        series_names={},
-        return_df=True,
-    )
-
-    # Spalten trennen in Baseline vs. Szenario
-    # Spaltennamen haben in der Regel das Muster: smBees_baseline_bee_colonies
-    baseline_cols = {col for col in df_all.columns if "_baseline_" in col}
-    scenario_cols = {col for col in df_all.columns if "_scenario_" in col}
-
-    def _strip_prefix(col: str) -> str:
-        # 'smBees_baseline_bee_colonies' -> 'bee_colonies'
-        parts = col.split("_")
-        return "_".join(parts[2:])
-
-    df_baseline = pd.DataFrame(index=df_all.index)
-    for col in baseline_cols:
-        df_baseline[_strip_prefix(col)] = df_all[col]
-
-    df_scenario = pd.DataFrame(index=df_all.index)
-    for col in scenario_cols:
-        df_scenario[_strip_prefix(col)] = df_all[col]
-
-    df_baseline.index.name = "t"
-    df_scenario.index.name = "t"
+    
+    # Run both scenarios
+    df_baseline = simulate_scenario(years, baseline_params)
+    df_scenario = simulate_scenario(years, scenario_params)
 
     # Einbussen gegenüber Baseline berechnen
     df_loss = compute_losses_vs_baseline(df_baseline, df_scenario)
@@ -237,12 +161,12 @@ def compute_losses_vs_baseline(
 
     merged["economic_loss_chf"] = (
         merged["economic_value_chf_baseline"] - merged["economic_value_chf_scenario"]
-    ).clip(lower=0.0)
+    )
 
     merged["honey_loss_tons"] = (
         merged["honey_production_tons_baseline"]
         - merged["honey_production_tons_scenario"]
-    ).clip(lower=0.0)
+    )
 
     merged["cumulative_economic_loss_chf"] = merged["economic_loss_chf"].cumsum()
     merged["cumulative_honey_loss_tons"] = merged["honey_loss_tons"].cumsum()
@@ -273,8 +197,8 @@ def _test_higher_stress_leads_to_lower_population() -> None:
     )
 
 
-def _test_losses_non_negative() -> None:
-    """Einbussen (Honig/CHF) sollten nie negativ sein."""
+def _test_losses_correct_sign() -> None:
+    """Einbussen sollten positiv sein, wenn das Szenario schlechter ist als die Baseline."""
 
     years = 10
     baseline = ScenarioParams(environment_stress=0.3, disease_management=0.7, climate_factor=0.6)
@@ -282,6 +206,7 @@ def _test_losses_non_negative() -> None:
 
     _, _, df_loss = run_bee_scenarios(years, baseline, worse)
 
+    # Bei einem schlechteren Szenario sollten die Verluste positiv sein
     assert (df_loss["economic_loss_chf"] >= 0).all()
     assert (df_loss["honey_loss_tons"] >= 0).all()
 
@@ -322,5 +247,5 @@ if __name__ == "__main__":
 
     # Tests ausführen
     _test_higher_stress_leads_to_lower_population()
-    _test_losses_non_negative()
+    _test_losses_correct_sign()
     print("\nAlle einfachen Tests wurden erfolgreich ausgeführt.")
