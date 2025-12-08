@@ -80,6 +80,15 @@ This will:
 - print the last time steps for baseline and scenario,
 - run a few simple sanity tests.
 
+**Model notes:**
+- Winter bees: Loss rate includes a winter survival penalty. Reference is 6 months average lifespan.
+  Penalty = max(0, (6 − avg_months) / 6) and is added on top of stress/management effects (Winterbienen 5–6 Monate).
+- Logistic growth: Carrying capacity 350,000 colonies; base growth 4.5% p.a.
+  `growth = colonies * effective_growth * (1 - colonies / carrying_capacity) * (0.7 + climate_growth_factor * climate)`.
+- Losses: base 4.0% p.a., amplified by stress/management, winter penalty, climate
+  `(1 + climate_loss_factor * (1 - climate_factor))`, and density `(1 + density_loss_factor * colonies/K)`.
+- Economic value: per colony CHF 1,585, scaled by `economic_value_scaler = 0.6` to temper gains/losses.
+
 #### 2.3 Frontend only: serve the static UI
 
 The frontend is already built into `frontend/dist`.

@@ -7,8 +7,17 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from script import (
     VALUE_PER_COLONY,
+    ECONOMIC_VALUE_SCALER,
+    BASE_GROWTH_RATE,
+    BASE_LOSS_RATE,
+    CARRYING_CAPACITY,
+    CLIMATE_GROWTH_FACTOR,
+    CLIMATE_LOSS_FACTOR,
+    DENSITY_LOSS_FACTOR,
+    SWISS_AREA_KM2,
     ScenarioParams,
     run_bee_scenarios,
+    WINTER_BEE_LIFESPAN_MONTHS,
 )
 
 
@@ -55,17 +64,16 @@ def create_app() -> Flask:
         data: Dict[str, Any] = request.get_json(silent=True) or {}
 
         years = int(data.get("years", 20))
-
-        baseline_cfg = data.get("baseline", {}) or {}
         scenario_cfg = data.get("scenario", {}) or {}
 
         def _clamp01(value: float) -> float:
             return max(0.0, min(1.0, float(value)))
 
+        # Baseline fest: Referenz 2022, ideale Bedingungen
         baseline_params = ScenarioParams(
-            environment_stress=_clamp01(baseline_cfg.get("environment_stress", 0.3)),
-            disease_management=_clamp01(baseline_cfg.get("disease_management", 0.7)),
-            climate_factor=_clamp01(baseline_cfg.get("climate_factor", 0.6)),
+            environment_stress=0.0,
+            disease_management=1.0,
+            climate_factor=1.0,
         )
 
         scenario_params = ScenarioParams(
@@ -138,6 +146,8 @@ def create_app() -> Flask:
         last_loss = loss_payload[-1]
 
         colonies_delta = last_scenario["bee_colonies"] - last_baseline["bee_colonies"]
+        baseline_density = last_baseline["bee_colonies"] / float(SWISS_AREA_KM2)
+        scenario_density = last_scenario["bee_colonies"] / float(SWISS_AREA_KM2)
 
         summary = {
             "baseline_colonies": last_baseline["bee_colonies"],
@@ -147,6 +157,40 @@ def create_app() -> Flask:
             "cumulative_honey_loss_tons": last_loss["cumulative_honey_loss_tons"],
             "baseline_honey_yield": last_baseline["honey_yield_per_colony"],
             "scenario_honey_yield": last_scenario["honey_yield_per_colony"],
+            "baseline_density_per_km2": baseline_density,
+            "scenario_density_per_km2": scenario_density,
+        }
+
+        # Zusatzinfo (nicht Bestandteil der Flows, rein beschreibend)
+        winter_loss_penalty = float(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    (6.0 - (WINTER_BEE_LIFESPAN_MONTHS[0] + WINTER_BEE_LIFESPAN_MONTHS[1]) / 2.0)
+                    / 6.0,
+                ),
+            )
+        )
+
+        metadata = {
+            "lifespan": {
+                "worker_winter_months": {
+                    "min": WINTER_BEE_LIFESPAN_MONTHS[0],
+                    "max": WINTER_BEE_LIFESPAN_MONTHS[1],
+                },
+                "winter_loss_penalty": winter_loss_penalty,
+            },
+            "model": {
+                "base_growth_rate": float(BASE_GROWTH_RATE),
+                "base_loss_rate": float(BASE_LOSS_RATE),
+                "carrying_capacity": float(CARRYING_CAPACITY),
+                "climate_growth_factor": float(CLIMATE_GROWTH_FACTOR),
+                "climate_loss_factor": float(CLIMATE_LOSS_FACTOR),
+                "density_loss_factor": float(DENSITY_LOSS_FACTOR),
+                "swiss_area_km2": float(SWISS_AREA_KM2),
+                "economic_value_scaler": float(ECONOMIC_VALUE_SCALER),
+            },
         }
 
         response = {
@@ -159,6 +203,7 @@ def create_app() -> Flask:
                 "loss": loss_payload,
             },
             "summary": summary,
+            "metadata": metadata,
         }
 
         return jsonify(response)

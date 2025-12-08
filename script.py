@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 
 import pandas as pd
-import numpy as np
+from BPTK_Py import Model
 
 
 # ------------------------------------------------------
@@ -30,16 +30,35 @@ START_YEAR = 2022
 # Basiswerte Schweiz 2022 (Agroscope)
 DEFAULT_INITIAL_COLONIES = 182_300  # Anzahl Bienenvölker
 
-# Basisraten (pro Jahr) – stark vereinfacht
-BASE_GROWTH_RATE = 0.08   # 8 % Zuwachs p.a. bei neutralen Bedingungen
-BASE_LOSS_RATE = 0.06     # 6 % Verluste p.a. bei neutralen Bedingungen
+# Basisraten (pro Jahr) – moderat, wird durch Logistik begrenzt
+BASE_GROWTH_RATE = 0.045  # 4.5 % Zuwachs p.a. bei neutralen Bedingungen
+BASE_LOSS_RATE = 0.04     # 4.0 % Verluste p.a. bei neutralen Bedingungen
+
+# Tragfähigkeit (logistische Begrenzung, Völker) – historischer Peak ~350k
+CARRYING_CAPACITY = 350_000
+
+# Schweizer Landesfläche (für Dichteausgaben, km²)
+SWISS_AREA_KM2 = 41_285
+
+# Klimaeinfluss auf Verluste (0..1), wirkt verstärkend bei schlechtem Klima
+CLIMATE_LOSS_FACTOR = 0.5
+
+# Klimaeinfluss auf Wachstum (Skalierung 0..1+), bei schlechtem Klima weniger Wachstum
+CLIMATE_GROWTH_FACTOR = 1.0
+
+# Dichteabhängige Verluste (Verstärkung, wenn Kolonien nahe an K)
+DENSITY_LOSS_FACTOR = 0.1
 
 # Volkswirtschaftlicher Nutzen pro Volk (CHF/Jahr)
 VALUE_PER_COLONY = 1_585  # ca. 600 CHF Produkte + 985 CHF Bestäubung
-
+# Kalibrierfaktor für wirtschaftlichen Wert (dämpft zu hohe Gewinne/Verluste)
+ECONOMIC_VALUE_SCALER = 0.6
 # Honigertrag-Spanne (kg/Jahr/Volk) aus Agroscope-Zeitreihe
 HONEY_MIN = 7.2           # schlechtes Jahr (2021)
 HONEY_MAX = 29.9          # sehr gutes Jahr (2020)
+
+# Lebensdauer (wird als Verstärker für Winterverluste genutzt)
+WINTER_BEE_LIFESPAN_MONTHS = (5, 6)  # Winterbienen (reduzierter Penalty)
 
 
 @dataclass
@@ -59,64 +78,122 @@ class ScenarioParams:
 
 
 # ------------------------------------------------------
-# Direkte Systemdynamik-Simulation (ohne BPTK-Py)
+# Systemdynamics-Simulation mit BPTK-Py
 # ------------------------------------------------------
 
 
+def _build_bee_model(years: int, params: ScenarioParams) -> Model:
+    """Baut das SD-Modell mit BPTK-Py (Stocks, Flows, Converter)."""
+
+    model = Model(starttime=0, stoptime=years, dt=1.0, name="bee_sd")
+
+    # Konstanten / Eingangsparameter
+    env_stress = model.constant("environment_stress")
+    env_stress.equation = float(params.environment_stress)
+
+    disease_mgmt = model.constant("disease_management")
+    disease_mgmt.equation = float(params.disease_management)
+
+    climate_factor = model.constant("climate_factor")
+    climate_factor.equation = float(params.climate_factor)
+
+    base_growth_rate = model.constant("base_growth_rate")
+    base_growth_rate.equation = float(BASE_GROWTH_RATE)
+
+    base_loss_rate = model.constant("base_loss_rate")
+    base_loss_rate.equation = float(BASE_LOSS_RATE)
+
+    # Winterbienen-Lebensdauer als Penalty auf die Verlustrate
+    avg_winter_months = sum(WINTER_BEE_LIFESPAN_MONTHS) / 2.0
+    # Referenz 6 Monate: kürzere Lebensdauer erhöht Verluste. Clamp 0..1.
+    winter_loss_penalty = max(0.0, min(1.0, (6.0 - avg_winter_months) / 6.0))
+    winter_penalty_const = model.constant("winter_loss_penalty")
+    winter_penalty_const.equation = float(winter_loss_penalty)
+
+    honey_min = model.constant("honey_min")
+    honey_min.equation = float(HONEY_MIN)
+
+    honey_max = model.constant("honey_max")
+    honey_max.equation = float(HONEY_MAX)
+
+    value_per_colony = model.constant("value_per_colony")
+    value_per_colony.equation = float(VALUE_PER_COLONY)
+
+    carrying_capacity = model.constant("carrying_capacity")
+    carrying_capacity.equation = float(CARRYING_CAPACITY)
+
+    climate_loss_factor = model.constant("climate_loss_factor")
+    climate_loss_factor.equation = float(CLIMATE_LOSS_FACTOR)
+
+    density_loss_factor = model.constant("density_loss_factor")
+    density_loss_factor.equation = float(DENSITY_LOSS_FACTOR)
+
+    # Stock & Flows
+    bee_colonies = model.stock("bee_colonies")
+    bee_colonies.initial_value = float(DEFAULT_INITIAL_COLONIES)
+
+    effective_growth = model.converter("effective_growth")
+    effective_growth.equation = base_growth_rate * (
+        1.0 + 0.5 * (1.0 - env_stress) + 0.5 * disease_mgmt
+    ) * (0.7 + CLIMATE_GROWTH_FACTOR * climate_factor)
+
+    effective_loss = model.converter("effective_loss")
+    effective_loss.equation = base_loss_rate * (
+        (1.0 + env_stress + 0.5 * (1.0 - disease_mgmt) + winter_penalty_const)
+        * (1.0 + climate_loss_factor * (1.0 - climate_factor))
+        * (1.0 + density_loss_factor * (bee_colonies / carrying_capacity))
+    )
+
+    colony_growth = model.flow("colony_growth")
+    colony_growth.equation = bee_colonies * effective_growth * (
+        1.0 - bee_colonies / carrying_capacity
+    )
+
+    colony_losses = model.flow("colony_losses")
+    colony_losses.equation = bee_colonies * effective_loss
+
+    # Stock-DGL (Netto-Zufluss)
+    bee_colonies.equation = colony_growth - colony_losses
+
+    # Converter für Honig und wirtschaftlichen Wert
+    honey_yield_per_colony = model.converter("honey_yield_per_colony")
+    honey_yield_per_colony.equation = (
+        (honey_min + climate_factor * (honey_max - honey_min))
+        * (1.0 - 0.5 * env_stress)
+    )
+
+    honey_production_tons = model.converter("honey_production_tons")
+    honey_production_tons.equation = bee_colonies * honey_yield_per_colony / 1000.0
+
+    economic_value_chf = model.converter("economic_value_chf")
+    economic_value_chf.equation = bee_colonies * value_per_colony * ECONOMIC_VALUE_SCALER
+
+    return model
+
+
 def simulate_scenario(years: int, params: ScenarioParams) -> pd.DataFrame:
-    """Simuliert ein einzelnes Szenario über die angegebene Anzahl Jahre.
-    
-    Args:
-        years: Anzahl der zu simulierenden Jahre
-        params: Szenario-Parameter (Umweltstress, Management, Klima)
-    
-    Returns:
-        DataFrame mit Zeitreihe (Index: Jahr, Spalten: bee_colonies, honey_yield_per_colony, etc.)
-    """
-    # Initialize
-    bee_colonies = [float(DEFAULT_INITIAL_COLONIES)]
-    time_steps = list(range(START_YEAR, START_YEAR + years + 1))
-    
-    # Calculate for each year
-    for _ in range(years):
-        current_colonies = bee_colonies[-1]
-        
-        # Calculate effective rates based on scenario parameters
-        effective_growth = BASE_GROWTH_RATE * (
-            1.0 + 0.5 * (1.0 - params.environment_stress) + 0.5 * params.disease_management
+    """Simuliert ein Szenario mit BPTK-Py und liefert eine Zeitreihe zurück."""
+
+    model = _build_bee_model(years, params)
+
+    records = []
+    for step in range(int(model.starttime), int(model.stoptime) + 1):
+        colonies = float(model.memoize("bee_colonies", step))
+        honey_yield = float(model.memoize("honey_yield_per_colony", step))
+        honey_prod = float(model.memoize("honey_production_tons", step))
+        econ_value = float(model.memoize("economic_value_chf", step))
+
+        records.append(
+            {
+                "t": START_YEAR + step,
+                "bee_colonies": colonies,
+                "honey_yield_per_colony": honey_yield,
+                "honey_production_tons": honey_prod,
+                "economic_value_chf": econ_value,
+            }
         )
-        effective_loss = BASE_LOSS_RATE * (
-            1.0 + params.environment_stress + 0.5 * (1.0 - params.disease_management)
-        )
-        
-        # Calculate flows
-        growth = current_colonies * effective_growth
-        losses = current_colonies * effective_loss
-        
-        # Update stock
-        new_colonies = current_colonies + growth - losses
-        bee_colonies.append(new_colonies)
-    
-    # Build result dataframe
-    results = []
-    for i, t in enumerate(time_steps):
-        colonies = bee_colonies[i]
-        
-        # Honey yield per colony (kg/year) based on climate and stress
-        honey_yield = (
-            (HONEY_MIN + params.climate_factor * (HONEY_MAX - HONEY_MIN))
-            * (1.0 - 0.5 * params.environment_stress)
-        )
-        
-        results.append({
-            't': t,
-            'bee_colonies': colonies,
-            'honey_yield_per_colony': honey_yield,
-            'honey_production_tons': colonies * honey_yield / 1000.0,
-            'economic_value_chf': colonies * VALUE_PER_COLONY,
-        })
-    
-    return pd.DataFrame(results).set_index('t')
+
+    return pd.DataFrame(records).set_index("t")
 
 
 # ------------------------------------------------------
