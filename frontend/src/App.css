@@ -58,6 +58,7 @@
   padding: 0.25rem;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+  position: relative;
 }
 
 .tab {
@@ -77,6 +78,50 @@
   color: #ffffff;
 }
 
+.tab-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.tab.caret {
+  padding: 0.55rem 0.7rem;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.tab-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.9rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  display: grid;
+  min-width: 180px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.tab-menu-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #0f172a;
+  border-radius: 0.6rem;
+  margin: 0.15rem;
+}
+
+.tab-menu-item:hover,
+.tab-menu-item.active {
+  background: #0f172a;
+  color: #ffffff;
+}
 .layout {
   width: 100%;
   margin: 0;
@@ -117,6 +162,41 @@
   max-width: none;
   margin: 0;
   width: 100%;
+}
+
+.info-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.info-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.info-card h3 {
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.info-card ul {
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.3rem;
+  color: #475569;
+}
+
+.wide-card {
+  grid-column: span 3;
 }
 
 .controls {

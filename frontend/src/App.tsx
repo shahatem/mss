@@ -122,7 +122,8 @@ function App() {
   const [result, setResult] = useState<SimulationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"LE1" | "LE2">("LE2");
+  const [activeTab, setActiveTab] = useState<"LE1" | "INFO" | "LE2">("LE2");
+  const [showInfoMenu, setShowInfoMenu] = useState(false);
 
   const leverSections: Array<{
     key: "scenario";
@@ -239,8 +240,8 @@ function App() {
     <div className="app">
       <header className="topbar">
         <div>
-          <p className="eyebrow">BPTK-Py</p>
-          <h1>Schweizer Bienen – Systemdynamik</h1>
+
+          <h1>Schweizer Bienen Simulator</h1>
           <p className="subtitle">
             Vergleich von Szenarien für Schweizer Bienenvölker – Wachstum, Verluste, Honig und Wert.
           </p>
@@ -248,26 +249,138 @@ function App() {
         <nav className="tabs">
           <button
             className={activeTab === "LE1" ? "tab active" : "tab"}
-            onClick={() => setActiveTab("LE1")}
+            onClick={() => {
+              setActiveTab("LE1");
+              setShowInfoMenu(false);
+            }}
           >
-            LE1
+            LE1 · Systemkartierung
           </button>
-          <button
-            className={activeTab === "LE2" ? "tab active" : "tab"}
-            onClick={() => setActiveTab("LE2")}
-          >
-            LE2 · Simulation
-          </button>
+          <div className="tab-dropdown">
+            <button
+              className={activeTab === "LE2" ? "tab active" : "tab"}
+              onClick={() => {
+                setActiveTab("LE2");
+                setShowInfoMenu(false);
+              }}
+            >
+              LE2 · Simulation
+            </button>
+            <button
+              className="tab caret"
+              onClick={() => setShowInfoMenu((v) => !v)}
+              aria-label="Weitere Optionen"
+            >
+              ▼
+            </button>
+            {showInfoMenu && (
+              <div className="tab-menu">
+                <button
+                  className={activeTab === "INFO" ? "tab-menu-item active" : "tab-menu-item"}
+                  onClick={() => {
+                    setActiveTab("INFO");
+                    setShowInfoMenu(false);
+                  }}
+                >
+                  Modell &amp; Erklärung
+                </button>
+              </div>
+            )}
+          </div>
         </nav>
       </header>
 
       {activeTab === "LE1" ? (
         <section className="panel placeholder">
-          <h2>LE1 – Inhalte folgen</h2>
+          <h2>Systemkartierung</h2>
           <p>
-            Hier entsteht ein Bereich für Texte oder Bilder. Die Struktur bleibt minimal, damit wir
-            später problemlos erweitern können.
+            Diese Seite ist für zusätzliche Inhalte reserviert (z.B. Text, Bilder, Dokumente). Sie ist
+            unabhängig von der Simulation und kann frei gestaltet werden.
           </p>
+        </section>
+      ) : activeTab === "INFO" ? (
+        <section className="panel placeholder info-page">
+          <h2>Modell & Erklärung</h2>
+          <p>
+            Überblick über das BPTK-Py-Systemdynamik-Modell für Schweizer Bienenvölker: Annahmen,
+            Gleichungen, Hebel und Outputs, damit auch Fachfremde nachvollziehen können, was passiert.
+          </p>
+
+          <div className="info-grid">
+            <div className="info-card">
+              <h3>Ziele</h3>
+              <ul>
+                <li>Fixe Referenz (2022, ideale Bedingungen) vs. anpassbares Szenario vergleichen.</li>
+                <li>Transparenz zu Wachstum, Verlusten, Honig-Ertrag und ökonomischem Wert.</li>
+              </ul>
+            </div>
+
+            <div className="info-card">
+              <h3>Eingaben (Hebel)</h3>
+              <ul>
+                <li><strong>Umweltstress</strong> (0–1): mehr Stress → mehr Verluste, weniger Wachstum &amp; Ertrag.</li>
+                <li><strong>Krankheitsmanagement</strong> (0–1): besseres Mgmt → weniger Verluste, mehr Wachstum.</li>
+                <li><strong>Klima</strong> (0–1): gutes Klima → mehr Wachstum, weniger Verluste, höherer Ertrag/Volk.</li>
+                <li>Simulationsjahre: Jahres-Schritte ab 2022.</li>
+              </ul>
+            </div>
+
+            <div className="info-card">
+              <h3>Parameter &amp; Defaults</h3>
+              <ul>
+                <li><em>Start:</em> 182’300 Völker (2022), dt = 1 Jahr.</li>
+                <li><em>Basisraten:</em> Wachstum 4.5% p.a., Verlust 4.0% p.a.</li>
+                <li><em>Tragfähigkeit:</em> K = 350’000 Völker (historischer Rahmen).</li>
+                <li><em>Winterbienen:</em> 5–6 Monate → Winter-Penalty in der Verlustformel.</li>
+                <li><em>Referenz:</em> Stress 0, Mgmt 1, Klima 1. Szenario-Defaults: 0.8 / 0.3 / 0.4.</li>
+              </ul>
+            </div>
+
+            <div className="info-card">
+              <h3>Ausgaben</h3>
+              <ul>
+                <li>Zeitreihen: Völker, Honig/Volk, Honig (t/Jahr), ökonomischer Wert.</li>
+                <li>Dichte: Völker/km² (Fläche CH 41’285 km²).</li>
+                <li>Kumulative Differenzen: Honig & CHF (dual-axis, CHF in Mio).</li>
+              </ul>
+            </div>
+
+            <div className="info-card wide-card">
+              <h3>Gleichungen (vereinfacht)</h3>
+              <ul>
+                <li>
+                  <strong>Wachstum:</strong> colonies * effective_growth * (1 - colonies / K)
+                </li>
+                <li>
+                  <strong>effective_growth</strong> = base_growth *
+                  (1 + 0.5*(1-stress) + 0.5*management) *
+                  (0.7 + climate_growth_factor * climate)
+                </li>
+                <li>
+                  <strong>Verluste:</strong> colonies * effective_loss
+                </li>
+                <li>
+                  <strong>effective_loss</strong> = base_loss *
+                  (1 + stress + 0.5*(1-management) + winter_penalty) *
+                  (1 + climate_loss_factor*(1-climate)) *
+                  (1 + density_loss_factor*colonies/K)
+                </li>
+                <li>Honig/Volk: 7.2–29.9 kg, Stress dämpft (1 - 0.5*stress).</li>
+                <li>Öko-Wert: Völker * 1’585 CHF * scaler (0.6).</li>
+              </ul>
+            </div>
+
+
+
+            <div className="info-card">
+              <h3>Interpretation & Grenzen</h3>
+              <ul>
+                <li>Referenz bleibt fix; Szenario zeigt Hebeleffekte.</li>
+                <li>Logistik bremst bei hoher Dichte; Verluste steigen bei Stress, schwachem Mgmt, schlechtem Klima, hoher Dichte.</li>
+                <li>Ökonomik gedämpft (Scaler 0.6); keine Preis-/Nachfrage-/Kostenmodelle.</li>
+              </ul>
+            </div>
+          </div>
         </section>
       ) : (
         <div className="layout">
@@ -302,7 +415,7 @@ function App() {
             <section className="panel compact">
               <div className="panel-header">
                 <h3>Hebel</h3>
-                <span className="badge">Baseline & Szenario</span>
+                <span className="badge">Szenario</span>
               </div>
               <div className="lever-stack">
                 {leverSections.map((section) => (
@@ -330,91 +443,6 @@ function App() {
               {error && <p className="error">{error}</p>}
             </section>
 
-            <section className="panel mini">
-              <details className="model-details slim">
-                <summary>Modell-Notizen</summary>
-                <ul>
-                  <li>Startjahr 2022, 182’300 Völker</li>
-                  <li>dt = 1 Jahr, Wachstum vs. Verluste als Flows</li>
-                  <li>Honig-Ertrag via Klima & Stress, Wert = Völker × 1’585 CHF</li>
-                  {result?.metadata?.lifespan?.worker_winter_months && (
-                    <li>
-                      Lebensdauer Winterbienen: {result.metadata.lifespan.worker_winter_months.min}–
-                      {result.metadata.lifespan.worker_winter_months.max} Monate.
-                    </li>
-                  )}
-                  {typeof result?.metadata?.lifespan?.winter_loss_penalty === "number" && (
-                    <li>
-                      Winter-Verlustaufschlag im Modell:{" "}
-                      {Math.round(result.metadata.lifespan.winter_loss_penalty * 100)}% auf die
-                      Verlustrate (Referenz = 6 Monate Ø-Lebensdauer).
-                    </li>
-                  )}
-                  {result?.metadata?.model?.carrying_capacity && (
-                    <li>
-                      Logistik: Tragfähigkeit{" "}
-                      {formatterInt.format(result.metadata.model.carrying_capacity)} Völker
-                      (historischer Peak-Rahmen).
-                    </li>
-                  )}
-                  {result?.metadata?.model?.base_growth_rate !== undefined && (
-                    <li>
-                      Basis-Wachstumsrate: {(result.metadata.model.base_growth_rate * 100).toFixed(2)}%
-                      {" / Jahr"}, Basis-Verlust:{" "}
-                      {(
-                        ((result.metadata.model.base_loss_rate ?? 0) as number) * 100
-                      ).toFixed(2)}
-                      % / Jahr.
-                    </li>
-                  )}
-                  {result?.metadata?.model?.climate_growth_factor !== undefined &&
-                    result?.metadata?.model?.climate_loss_factor !== undefined && (
-                    <li>
-                      Klima wirkt dämpfend auf Wachstum und verstärkend auf Verluste; Dichteabhängige
-                      Verluste steigen mit Völkerdichte.
-                    </li>
-                  )}
-                </ul>
-              </details>
-            </section>
-
-            <section className="panel mini">
-              <details className="model-details slim">
-                <summary>Berechnungen (Kurz)</summary>
-                <ul>
-                  <li>
-                    Wachstum: <code>growth = colonies * effective_growth * (1 - colonies / K)</code>
-                    , mit <code>K</code> Tragfähigkeit.
-                  </li>
-                  <li>
-                    effective_growth = base_growth *
-                    <code>(1 + 0.5*(1-stress) + 0.5*management)</code> *
-                    <code>(0.7 + climate_growth_factor * climate)</code>
-                  </li>
-                  <li>
-                    Verluste: <code>loss = colonies * effective_loss</code>
-                  </li>
-                  <li>
-                    effective_loss = base_loss *
-                    <code>(1 + stress + 0.5*(1-management) + winter_penalty)</code> *
-                    <code>(1 + climate_loss_factor*(1-climate))</code> *
-                    <code>(1 + density_loss_factor*colonies/K)</code>
-                  </li>
-                  <li>
-                    Honig-Ertrag/Volk: linear zwischen 7.2–29.9 kg, reduziert durch Stress (Faktor{" "}
-                    <code>(1 - 0.5*stress)</code>)
-                  </li>
-                  <li>
-                    Dichte: Völker/km² = <code>colonies / 41’285</code> (Schweiz-Fläche).
-                  </li>
-                  <li>
-                    Ökonomischer Wert: 1’585 CHF/Volk wird konservativ skaliert (Factor 0.6), um
-                    Überzeichnung bei optimistischen Szenarien zu vermeiden (unsichere Preise,
-                    Nachfrage, Bestäubungsnutzen).
-                  </li>
-                </ul>
-              </details>
-            </section>
           </div>
 
           <div className="right-rail">
