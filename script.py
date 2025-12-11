@@ -252,7 +252,7 @@ def compute_losses_vs_baseline(
 
 
 # ------------------------------------------------------
-# Einfache Tests (können als Mini-Validierung für LE2 dienen)
+# Einfache Tests als Mini-Validierung für LE2 dienen
 # ------------------------------------------------------
 
 

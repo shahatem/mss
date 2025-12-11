@@ -271,9 +271,46 @@ function App() {
         <section className="panel placeholder">
           <h2>Systemkartierung</h2>
           <p>
-            Diese Seite ist für zusätzliche Inhalte reserviert (z.B. Text, Bilder, Dokumente). Sie ist
-            unabhängig von der Simulation und kann frei gestaltet werden.
+            Hier befinden sich die Systemkartierung und Beschreibung des Modells. Es beinhaltet zum einten
+            die aktuelle Systemkartierung von unserem Bienenmodell und zum anderen die erste Entwürfe.
           </p>
+          <h4>Aktuelle Systemkarte</h4>
+          <p>
+          Die Karte zeigt das zugrunde liegende System unserer Bienenpopulation mit den verschiedenen Systemkomponenten und deren Verbindungen.
+          Externe Faktoren wie Klima, von Menschen verursachter Umweltstress sowie das Krankheitsmanagement der Imker bilden die zentralen Hebel, die das System beeinflussen und in unseren Szenarien angepasst werden können.
+          
+          Unser eigentliches System und zugleich Haupt-Stakeholder ist die Bienenpopulation. Ihr Bestand wird durch zwei Flows bestimmt: Wachstum erhöht die Anzahl der Bienenvölker, 
+          Verluste verringern sie.Die verschiedenen Einflussgrössen wirken direkt auf diese beiden Flows und steuern dadurch die Entwicklung der Bienenpopulation über die Zeit.
+          </p>
+          <img
+            src="/current_flow.png"
+            alt="Systemkarte des Bienenmodell"
+            className="system-map"
+          />
+
+          <p> 
+            Um die einzelne EInflüsse klar zu machen, haben wir auch ein Casual Loop Diagram erstellt.
+            <img
+              src="/cld.png"
+              alt="Casual Loop Diagram des Bienenmodell"
+              className="system-map"
+            />
+          </p>
+          <h4>Erster Entwurf der Systemkarte</h4>
+          <p>
+          Unser erster Entwurf entstand während der Kontaktstunde, in der wir unserer Kreativität freien Lauf liessen. Ausgehend von der Biene als zentralem Element haben 
+          wir verschiedene Einflüsse sowie abschwächende (rote) und verstärkende (grüne) Wirkungen direkt mit Pfeilen und Postit Zetteln eingezeichnet. 
+          Dadurch entwickelte sich unsere Darstellung sehr schnell zu einer Mischung aus Mindmap / Cluster Map und Causal Loop Diagram. Da wir die Stakeholder dabei bereits unbewusst integriert hatten, entschieden wir uns, sie in diesem Entwurf pink zu markieren, 
+          anstatt eine separate Stakeholder Map zu erstellen. Um die entstehenden Loops aber doch nochbesser ersichtlich zu machen, haben wir sie auch textlich formuliert.
+          Es ist zu bemerken, dass der Entwurf nicht perfekt ist und wir noch weitere Verbesserungen vornehmen müssen. Da wir aber danach wussten, dass wir einen 
+          anderen Ansatz aufgrund unser Datenmenge folgen müssen, haben wir uns entschieden diesen weiter zu entwickeln.
+          </p>
+          <img
+            src="/first_draft.png"
+            alt="Erster Entwurf der Systemkarte"
+            className="system-map-large"
+          />
+
         </section>
       ) : activeTab === "INFO" ? (
         <section className="panel placeholder info-page">

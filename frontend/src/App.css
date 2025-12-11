@@ -120,6 +120,29 @@
   width: 100%;
 }
 
+.system-map {
+  max-width: 25%;
+  height: auto;
+  width: 100%;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+}
+
+.system-map-large {
+  max-width: 90%;
+  height: auto;
+  width: 100%;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+}
+
+h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .info-page {
   display: grid;
   gap: 1rem;
