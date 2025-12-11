@@ -1,0 +1,46 @@
+---
+config:
+  layout: elk
+---
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Mermaid code for the System overview
+%%% Can be pasted into www.mermaidchart.com
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+flowchart TB
+ subgraph ECOLOGICAL["**Externe Umweltfaktoren**"]
+        climate_factor["Klima / Wetter"]
+  end
+   subgraph LW["**Landwirtschaft Baugewerbe etc.**"]
+        environment_stress["Umweltstress"]
+ 
+  end
+ subgraph MGMT["**Imker**"]
+        disease_management["Krankheitsmanagement"]
+  end
+ subgraph POP["**Bienenpopulation**"]
+        bee_colonies["Bienenvölker (Stock)"]
+        colony_growth["Wachstum (Flow)"]
+        colony_losses["Verlust (Flow)"]
+  end
+ subgraph OUTPUTS["Outputs"]
+        honey_yield["Honigertrag pro Volk"]
+        honey_total["Honigproduktion pro Jahr"]
+        economic_value["Wirtschaftlicher Nutzen"]
+  end
+    climate_factor --> colony_growth & honey_yield &  colony_losses
+    environment_stress -.-> colony_losses & honey_yield & colony_growth 
+    disease_management ==> colony_growth & colony_losses 
+    colony_growth --> bee_colonies
+    bee_colonies --> colony_growth & colony_losses & honey_total & economic_value
+    colony_losses --> bee_colonies
+    honey_yield --> honey_total
+
+    style environment_stress fill:#F2D16B,stroke:#B29000,stroke-width:2px,color:#000
+    style climate_factor fill:#F2D16B,stroke:#B29000,stroke-width:2px,color:#000
+    style disease_management fill:#F2D16B,stroke:#B29000,stroke-width:2px,color:#000
+    style bee_colonies fill:#d4f8d4,stroke:#4caf50,stroke-width:2px,color:#000
+    style colony_growth fill:#FFD6A5,stroke:#FF8C00,stroke-width:2px,color:#000
+    style colony_losses fill:#FFD6A5,stroke:#FF8C00,stroke-width:2px,color:#000
+    linkStyle 3 stroke:#757575,fill:none
+    linkStyle 4 stroke:#757575
+    linkStyle 5 stroke:#757575,fill:none

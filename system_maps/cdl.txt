@@ -1,0 +1,18 @@
+---
+config:
+  layout: elk
+---
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Mermaid code for the Cadsual Loop Diagram
+%%% Can be pasted into www.mermaidchart.com
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+flowchart TB
+    bee_colonies("Bienenpopulation") -- **+** --> colony_growth("Wachstum") & density("Populationsdichte")
+    climate("Klima") -- **+** --> colony_growth & colony_losses("Verluste")
+    disease_management("Krankheitsmanagement") == **+** ==> colony_growth
+    environment_stress("Umweltstress") -. "**-**" .-> colony_growth
+    density -- **+** --> colony_losses
+    environment_stress -. **+** .-> colony_losses
+    disease_management == "**-**" ==> colony_losses
+    colony_growth -- + --> bee_colonies
+    colony_losses -- "**-**" --> bee_colonies
