@@ -123,7 +123,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"LE1" | "INFO" | "LE2">("LE2");
-  const [showInfoMenu, setShowInfoMenu] = useState(false);
 
   const leverSections: Array<{
     key: "scenario";
@@ -249,44 +248,22 @@ function App() {
         <nav className="tabs">
           <button
             className={activeTab === "LE1" ? "tab active" : "tab"}
-            onClick={() => {
-              setActiveTab("LE1");
-              setShowInfoMenu(false);
-            }}
+            onClick={() => setActiveTab("LE1")}
           >
-            LE1 · Systemkartierung
+            Systemkartierung
           </button>
-          <div className="tab-dropdown">
-            <button
-              className={activeTab === "LE2" ? "tab active" : "tab"}
-              onClick={() => {
-                setActiveTab("LE2");
-                setShowInfoMenu(false);
-              }}
-            >
-              LE2 · Simulation
-            </button>
-            <button
-              className="tab caret"
-              onClick={() => setShowInfoMenu((v) => !v)}
-              aria-label="Weitere Optionen"
-            >
-              ▼
-            </button>
-            {showInfoMenu && (
-              <div className="tab-menu">
-                <button
-                  className={activeTab === "INFO" ? "tab-menu-item active" : "tab-menu-item"}
-                  onClick={() => {
-                    setActiveTab("INFO");
-                    setShowInfoMenu(false);
-                  }}
-                >
-                  Modell &amp; Erklärung
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            className={activeTab === "INFO" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("INFO")}
+          >
+            Modell &amp; Erklärung
+          </button>
+          <button
+            className={activeTab === "LE2" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("LE2")}
+          >
+            Simulation
+          </button>
         </nav>
       </header>
 

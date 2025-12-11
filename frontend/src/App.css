@@ -78,50 +78,6 @@
   color: #ffffff;
 }
 
-.tab-dropdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  position: relative;
-}
-
-.tab.caret {
-  padding: 0.55rem 0.7rem;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.tab-menu {
-  position: absolute;
-  top: calc(100% + 0.3rem);
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.9rem;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-  display: grid;
-  min-width: 180px;
-  z-index: 10;
-  overflow: hidden;
-}
-
-.tab-menu-item {
-  text-align: left;
-  border: none;
-  background: transparent;
-  padding: 0.65rem 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: #0f172a;
-  border-radius: 0.6rem;
-  margin: 0.15rem;
-}
-
-.tab-menu-item:hover,
-.tab-menu-item.active {
-  background: #0f172a;
-  color: #ffffff;
-}
 .layout {
   width: 100%;
   margin: 0;
