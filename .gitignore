@@ -17,7 +17,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .pnpm-debug.log*
-dist/
 .parcel-cache
 .turbo
 .yarn/cache
@@ -49,5 +48,4 @@ Desktop.ini
 *.egg-info/
 *.egg
 build/
-dist/
 

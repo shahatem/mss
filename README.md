@@ -48,6 +48,22 @@ The backend runs simulations and prints results/tests to the console; the fronte
   pip install -r requirements.txt
   ```
 
+
+- **(Optional) Install Node.js dependencies**
+
+  ```bash
+  cd frontend
+  npm install
+  ```
+
+
+- **(Optional) Build Node.js dependencies**
+
+  ```bash
+  cd frontend
+  npm run build
+  ```
+
 ---
 
 ### 2. Running the application
