@@ -268,7 +268,7 @@ function App() {
       </header>
 
       {activeTab === "LE1" ? (
-        <section className="panel placeholder">
+        <section className="panel placeholder center">
           <h2>Systemkartierung</h2>
           <p>
             Hier befinden sich die Systemkartierung und Beschreibung des Modells. Es beinhaltet zum einten
@@ -290,12 +290,12 @@ function App() {
 
           <p> 
             Um die einzelne EInflüsse klar zu machen, haben wir auch ein Casual Loop Diagram erstellt.
-            <img
-              src="/cld.png"
-              alt="Casual Loop Diagram des Bienenmodell"
-              className="system-map"
-            />
           </p>
+          <img
+            src="/cld.png"
+            alt="Casual Loop Diagram des Bienenmodell"
+            className="system-map"
+          />
           <h4>Erster Entwurf der Systemkarte</h4>
           <p>
           Unser erster Entwurf entstand während der Kontaktstunde, in der wir unserer Kreativität freien Lauf liessen. Ausgehend von der Biene als zentralem Element haben 
